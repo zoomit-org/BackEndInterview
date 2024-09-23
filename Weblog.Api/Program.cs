@@ -1,3 +1,4 @@
+using Microsoft.EntityFrameworkCore;
 using Weblog.Application;
 using Weblog.Application.Services;
 
@@ -6,7 +7,7 @@ var builder = WebApplication.CreateBuilder(args);
 builder.Services.AddControllers();
 builder.Services.AddSwaggerGen();
 builder.Services.AddTransient<IArticleService, ArticleService>();
-builder.Services.Configure<DatabaseOptions>(builder.Configuration.GetSection("MongoDb"));
+builder.Services.AddDbContext<DatabaseContext>(b => b.UseSqlServer(builder.Configuration["ConnectionString"]));
 
 var app = builder.Build();
 

@@ -1,9 +1,9 @@
-using System;
+﻿using System;
 using System.Collections.Generic;
+using System.Linq;
 using System.Net.Http;
 using System.Net.Http.Json;
-using Microsoft.Extensions.Options;
-using MongoDB.Driver;
+using Microsoft.EntityFrameworkCore;
 using Weblog.Application.Commands;
 using Weblog.Application.ReadModels;
 using Weblog.Domain;
@@ -12,34 +12,37 @@ namespace Weblog.Application.Services;
 
 public class ArticleService : IArticleService
 {
-    private readonly IMongoDatabase _database;
+    private readonly DatabaseContext _databaseContext;
 
-    public ArticleService(IOptions<DatabaseOptions> databaseOptions)
+    public ArticleService(DatabaseContext databaseContext)
     {
-        var client = new MongoClient(databaseOptions.Value.ConnectionString);
-        _database = client.GetDatabase(databaseOptions.Value.DatabaseName);
+        _databaseContext = databaseContext;
     }
 
-    public string Create(CreateArticleCommand command)
+    public int Create(CreateArticleCommand command)
     {
         var article = new Article
         {
             Title = command.Title,
             Content = command.Content,
-            AuthorIds = command.AuthorIds,
+            Authors = command.AuthorIds.Select(id => new ArticleAuthor
+                {
+                    UserId = id
+                })
+                .ToArray(),
             CreateDateTime = DateTime.UtcNow,
             CategoryId = command.CategoryId
         };
 
-        var collection = _database.GetCollection<Article>("articles");
-        collection.InsertOne(article);
+        _databaseContext.Add(article);
+        _databaseContext.SaveChanges();
+
         return article.Id;
     }
 
     public void Publish(PublishArticleCommand command)
     {
-        var collection = _database.GetCollection<Article>("articles");
-        var article = collection.Find(a => a.Id == command.Id).Single();
+        var article = _databaseContext.Articles.Find(command.Id);
 
         if (article is null or { IsPublished: true })
         {
@@ -53,30 +56,27 @@ public class ArticleService : IArticleService
             article.IsPublished = true;
         }
 
-        collection.ReplaceOne(a => a.Id == article.Id, article);
+        _databaseContext.SaveChanges();
     }
 
-    public ArticleReadModel GetById(string id)
+    public ArticleReadModel GetById(int id)
     {
-        var article = _database.GetCollection<Article>("articles")
-            .Find(a => a.Id == id)
-            .Single();
+        var article = _databaseContext.Articles.AsNoTracking()
+            .Include(a => a.Category)
+            .Include(a => a.Authors)
+            .Single(a => a.Id == id);
 
-        if (article is not { IsPublished: true })
+        if (article is null or { IsPublished: false })
         {
             throw new Exception();
         }
 
-        var category = _database.GetCollection<Category>("categories")
-            .Find(c => c.Id == article.CategoryId)
-            .Single();
+        var authors = new List<AuthorReadModel>(article.Authors.Length);
 
-        var authors = new List<AuthorReadModel>(article.AuthorIds.Length);
-
-        foreach (var authorId in article.AuthorIds)
+        foreach (var userId in article.Authors.Select(a => a.UserId))
         {
             var httpClient = new HttpClient();
-            var response = httpClient.GetAsync($"http://iam/api/users/{authorId}").Result;
+            var response = httpClient.GetAsync($"http://iam/api/users/{userId}").Result;
             response.EnsureSuccessStatusCode();
             var author = response.Content.ReadFromJsonAsync<AuthorReadModel>().Result;
             authors.Add(author);
@@ -90,8 +90,8 @@ public class ArticleService : IArticleService
             PublishDateTime = article.PublishDateTime!.Value,
             Category = new CategoryReadModel
             {
-                Id = category.Id,
-                Title = category.Title,
+                Id = article.Category.Id,
+                Title = article.Category.Title,
             },
             Authors = authors.ToArray(),
         };

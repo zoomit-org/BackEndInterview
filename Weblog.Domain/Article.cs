@@ -4,7 +4,7 @@ namespace Weblog.Domain;
 
 public class Article
 {
-    public string Id { get; set; }
+    public int Id { get; set; }
 
     public DateTime CreateDateTime { get; set; }
 
@@ -16,7 +16,9 @@ public class Article
     
     public string Content { get; set; }
     
-    public string[] AuthorIds { get; set; }
+    public ArticleAuthor[] Authors { get; set; }
 
-    public string CategoryId { get; set; }
+    public int CategoryId { get; set; }
+    
+    public Category Category { get; set; }
 }

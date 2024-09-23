@@ -5,7 +5,7 @@ namespace Weblog.Application.Services;
 
 public interface IArticleService
 {
-    string Create(CreateArticleCommand command);
+    int Create(CreateArticleCommand command);
     void Publish(PublishArticleCommand command);
-    ArticleReadModel GetById(string id);
+    ArticleReadModel GetById(int id);
 }

@@ -4,7 +4,7 @@ namespace Weblog.Application.ReadModels;
 
 public class ArticleReadModel
 {
-    public string Id { get; set; }
+    public int Id { get; set; }
 
     public DateTime PublishDateTime { get; set; }
 

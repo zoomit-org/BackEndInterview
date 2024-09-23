@@ -15,8 +15,8 @@ public class ArticleController : ControllerBase
         _articleService = articleService;
     }
 
-    [HttpGet("{id}")]
-    public IActionResult GetById(string id)
+    [HttpGet("{id:int}")]
+    public IActionResult GetById(int id)
     {
         var result = _articleService.GetById(id);
         return Ok(result);
