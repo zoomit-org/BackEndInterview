@@ -15,10 +15,10 @@ public class ArticleController : ControllerBase
         _articleService = articleService;
     }
 
-    [HttpGet("{id:int}")]
-    public IActionResult GetById(int id)
+    [HttpGet("{slug}")]
+    public IActionResult GetBySlug(string slug)
     {
-        var result = _articleService.GetById(id);
+        var result = _articleService.GetBySlug(slug);
         return Ok(result);
     }
 

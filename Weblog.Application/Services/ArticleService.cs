@@ -19,15 +19,22 @@ public class ArticleService : IArticleService
         _databaseContext = databaseContext;
     }
 
-    public int Create(CreateArticleCommand command)
+    public string Create(CreateArticleCommand command)
     {
+        if (_databaseContext.Articles.Any(a => a.Slug == command.Slug))
+        {
+            throw new Exception();
+        }
+        
         var article = new Article
         {
+            Id = Guid.NewGuid().ToString(),
             Title = command.Title,
+            Slug = command.Slug,
             Content = command.Content,
             Authors = command.AuthorIds.Select(id => new ArticleAuthor
                 {
-                    UserId = id
+                    UserId = id,
                 })
                 .ToArray(),
             CreateDateTime = DateTime.UtcNow,
@@ -48,7 +55,7 @@ public class ArticleService : IArticleService
         {
             throw new Exception();
         }
-
+        
         article.PublishDateTime = command.PublishAt;
 
         if (article.PublishDateTime <= DateTime.UtcNow)
@@ -59,12 +66,12 @@ public class ArticleService : IArticleService
         _databaseContext.SaveChanges();
     }
 
-    public ArticleReadModel GetById(int id)
+    public ArticleReadModel GetBySlug(string slug)
     {
         var article = _databaseContext.Articles.AsNoTracking()
             .Include(a => a.Category)
             .Include(a => a.Authors)
-            .Single(a => a.Id == id);
+            .Single(a => a.Slug == slug);
 
         if (article is null or { IsPublished: false })
         {
@@ -82,10 +89,14 @@ public class ArticleService : IArticleService
             authors.Add(author);
         }
 
+        var likesCountResponse = new HttpClient().GetAsync($"http://discussion/api/likes/{article.Id}").Result;
+        likesCountResponse.EnsureSuccessStatusCode();
+
         return new ArticleReadModel
         {
             Id = article.Id,
             Title = article.Title,
+            Slug = article.Slug,
             Content = article.Content,
             PublishDateTime = article.PublishDateTime!.Value,
             Category = new CategoryReadModel
@@ -94,6 +105,7 @@ public class ArticleService : IArticleService
                 Title = article.Category.Title,
             },
             Authors = authors.ToArray(),
+            LikesCount = likesCountResponse.Content.ReadFromJsonAsync<int>().Result,
         };
     }
 }

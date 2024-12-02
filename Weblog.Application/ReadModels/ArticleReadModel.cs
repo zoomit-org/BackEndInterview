@@ -4,15 +4,19 @@ namespace Weblog.Application.ReadModels;
 
 public class ArticleReadModel
 {
-    public int Id { get; set; }
+    public string Id { get; set; }
 
     public DateTime PublishDateTime { get; set; }
 
     public string Title { get; set; }
+    
+    public string Slug { get; set; }
     
     public string Content { get; set; }
     
     public AuthorReadModel[] Authors { get; set; }
 
     public CategoryReadModel Category { get; set; }
+
+    public int LikesCount { get; set; }
 }
